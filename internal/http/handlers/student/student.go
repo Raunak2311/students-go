@@ -85,3 +85,49 @@ func GetList(storage storage.Storage) http.HandlerFunc {
 		response.WriteJson(w, http.StatusOK, students)
 	}
 }
+
+func UpdateById(storage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		id := r.PathValue("id")
+		slog.Info("Getting a student", slog.String("id", id))
+
+		// Parse the request body into a Student object
+		var student types.Student
+		if err := json.NewDecoder(r.Body).Decode(&student); err != nil {
+			resp := response.GeneralError(fmt.Errorf("invalid request body"))
+			response.WriteJson(w, http.StatusBadRequest, resp)
+			return
+		}
+
+		// Validate the student data if necessary
+		v := validator.New()
+		if err := v.Struct(student); err != nil {
+			if validationErrs, ok := err.(validator.ValidationErrors); ok {
+				resp := response.ValidationError(validationErrs)
+				response.WriteJson(w, http.StatusBadRequest, resp)
+				return
+			}
+			resp := response.GeneralError(err)
+			response.WriteJson(w, http.StatusInternalServerError, resp)
+			return
+		}
+
+		// Convert ID from string to int64 (assuming your ID is int64)
+		studentId, err := strconv.ParseInt(id, 10, 64)
+		if err != nil {
+			resp := response.GeneralError(fmt.Errorf("invalid id format"))
+			response.WriteJson(w, http.StatusBadRequest, resp)
+			return
+		}
+
+		// Call the storage layer to update the student by ID
+		updatedStudent, err := storage.UpdateStudentById(studentId, student)
+		if err != nil {
+			resp := response.GeneralError(fmt.Errorf("failed to update student: %w", err))
+			response.WriteJson(w, http.StatusInternalServerError, resp)
+			return
+		}
+		response.WriteJson(w, http.StatusOK, updatedStudent)
+	}
+}

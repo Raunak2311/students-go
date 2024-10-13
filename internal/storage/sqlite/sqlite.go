@@ -100,3 +100,26 @@ func (s *Sqlite) GetStudents() ([]types.Student, error) {
 	}
 	return students, nil
 }
+
+func (s *Sqlite) UpdateStudentById(id int64, student types.Student) (types.Student, error) {
+
+	// Prepare the SQL statement to update all fields
+	stmt, err := s.Db.Prepare(`
+		UPDATE students
+		SET name = ?, email = ?, age = ?
+		WHERE id = ?
+	`)
+	if err != nil {
+		return types.Student{}, fmt.Errorf("error preparing update statement: %w", err)
+	}
+	defer stmt.Close()
+
+	// Execute the update statement with all required fields
+	_, err = stmt.Exec(student.Name, student.Email, student.Age, id)
+	if err != nil {
+		return types.Student{}, fmt.Errorf("error executing update statement: %w", err)
+	}
+
+	// Return the updated student record
+	return s.GetStudentById(id)
+}
